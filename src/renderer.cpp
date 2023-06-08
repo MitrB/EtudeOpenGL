@@ -10,6 +10,13 @@ SDL_WindowFlags Renderer::getWindowFlags() {
     return window_flags;
 }
 
+void Renderer::draw() {
+    glClearColor(0.8f, 0.9f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    SDL_GL_SwapWindow(window);
+}
+
 int Renderer::init() {
     // Request an OpenGL 4.6 context (should be core)
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
@@ -58,6 +65,7 @@ bool Renderer::run() {
                 }
         }
     };
+    draw();
 
     return bQuit;
 }
