@@ -4,7 +4,7 @@ namespace etudegl {
 
 void Engine::init() {
     int status = renderer.init();
-    if (status != 1) {
+    if (status != 0) {
         std::cout << "Something went wrong initialising the Engine."
                   << "\n";
     }

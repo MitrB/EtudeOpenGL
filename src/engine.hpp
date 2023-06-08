@@ -5,9 +5,11 @@
 namespace etudegl {
 class Engine {
 public:
+    ~Engine() { cleanup(); }
+
     Renderer renderer;
     void init();
-    void run(); // GameLoop
+    void run();  // GameLoop
     void cleanup();
 };
 
