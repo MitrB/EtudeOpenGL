@@ -8,6 +8,8 @@ void Engine::init() {
         std::cout << "Something went wrong initialising the Engine."
                   << "\n";
     }
+
+    scene.init();
 }
 void Engine::run() {
     bool quitCall = false;
