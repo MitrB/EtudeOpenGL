@@ -59,7 +59,7 @@ int Renderer::init() {
 void Renderer::createBuffers(std::vector<float> &vertices, std::vector<uint> &indices) {
     trianglesToDrawExpressedInVertices = indices.size();
     for (auto &vertex : vertices) {
-        vertex = vertex / 16.0f;
+        vertex = vertex / 26.0f;
         std::cout << vertex << " ";
     }
     std::cout << "\n";

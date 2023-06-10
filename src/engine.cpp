@@ -18,14 +18,10 @@ void Engine::init() {
     scene.octManager.addNode(path2);
     std::vector<NodePosition> path3 = {ls};
     scene.octManager.addNode(path3);
-    std::vector<NodePosition> path4 = {ln};
+    std::vector<NodePosition> path4 = {us, le, le, le}; 
     scene.octManager.addNode(path4);
-    std::vector<NodePosition> path5 = {lw};
+    std::vector<NodePosition> path5 = {us, ls, ls}; 
     scene.octManager.addNode(path5);
-    // std::vector<NodePosition> path4 = {us, ls, le}; 
-    // scene.octManager.addNode(path4);
-    // std::vector<NodePosition> path5 = {us, us, ls}; 
-    // scene.octManager.addNode(path5);
 
     // generate mesh
     std::vector<float> vertices{};

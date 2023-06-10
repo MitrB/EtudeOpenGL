@@ -36,7 +36,7 @@ struct TreeNode {
 class OctManager {
 public:
     const unsigned int maxdepth = 4;
-    const unsigned int rootNodeEdgeLength = std::pow(2, maxdepth - 1);
+    const unsigned int rootNodeEdgeLength = std::pow(2, maxdepth);
 
     TreeNode tree{};
 

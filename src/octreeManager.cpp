@@ -1,5 +1,6 @@
 #include "octreeManager.hpp"
 
+#include <cmath>
 #include <glm/detail/qualifier.hpp>
 #include <glm/fwd.hpp>
 #include <glm/glm.hpp>
@@ -161,7 +162,7 @@ void OctManager::init() {
  * @param maxdepth maximum index of path
  * @param maxlength length of the cube if root node is leaf
  */
-glm::vec3 pathToCubeOrigin(const std::vector<NodePosition>& path, const uint& maxdepth, const uint& maxlength) {
+glm::vec3 pathToCubeOrigin(const std::vector<NodePosition>& path, const uint& maxlength) {
     if (path.empty()) {
         return glm::vec3{0.0f};
     }
@@ -171,32 +172,37 @@ glm::vec3 pathToCubeOrigin(const std::vector<NodePosition>& path, const uint& ma
 
     // the position of the origin of the cube is dependant on it's position in the oct tree
     for (NodePosition position : path) {
+        std::cout << "Depth: "<< currentDepth << "\n";
+        std::cout << "Maxlength: "<< maxlength << "\n";
+        std::cout << (float)maxlength / (float)std::pow(2.0, currentDepth) << "\n";
         switch (position) {
             case un:
-                origin += glm::vec3{0.0f, 0.0f, (float)maxlength} / (2.0f * currentDepth);
+                origin += glm::vec3{0.0f, 0.0f, (float)maxlength} / (float)std::pow(2.0, currentDepth);
                 break;
             case ue:
-                origin += glm::vec3{0.0f, (float)maxlength, (float)maxlength} / (2.0f * currentDepth);
+                origin += glm::vec3{0.0f, (float)maxlength, (float)maxlength} / (float)std::pow(2.0, currentDepth);
                 break;
             case us:
-                origin += glm::vec3{(float)maxlength, (float)maxlength, (float)maxlength} / (2.0f * currentDepth);
+                origin += glm::vec3{(float)maxlength, (float)maxlength, (float)maxlength} /
+                          (float)std::pow(2.0, currentDepth);
                 break;
             case uw:
-                origin += glm::vec3{(float)maxlength, 0.0f, (float)maxlength} / (2.0f * currentDepth);
+                origin += glm::vec3{(float)maxlength, 0.0f, (float)maxlength} / (float)std::pow(2.0, currentDepth);
                 break;
             case ln:
-                origin += glm::vec3{0.0f, 0.0f, 0.0f} / (2.0f * currentDepth);
+                origin += glm::vec3{0.0f, 0.0f, 0.0f} / (float)std::pow(2.0, currentDepth);
                 break;
             case le:
-                origin += glm::vec3{0.0f, (float)maxlength, 0.0f} / (2.0f * currentDepth);
+                origin += glm::vec3{0.0f, (float)maxlength, 0.0f} / (float)std::pow(2.0, currentDepth);
                 break;
             case ls:
-                origin += glm::vec3{(float)maxlength, (float)maxlength, 0.0f} / (2.0f * currentDepth);
+                origin += glm::vec3{(float)maxlength, (float)maxlength, 0.0f} / (float)std::pow(2.0, currentDepth);
                 break;
             case lw:
-                origin += glm::vec3{(float)maxlength, 0.0f, 0.0f} / (2.0f * currentDepth);
+                origin += glm::vec3{(float)maxlength, 0.0f, 0.0f} / (float)std::pow(2.0, currentDepth);
                 break;
         }
+        currentDepth++;
     }
 
     return origin;
@@ -205,7 +211,7 @@ glm::vec3 pathToCubeOrigin(const std::vector<NodePosition>& path, const uint& ma
 std::vector<glm::vec<3, float>> getCubeLocalVertices(const std::vector<NodePosition> path, const uint& maxdepth,
                                                      const uint maxlength) {
     std::vector<glm::vec3> vertices{};
-    float length = (float)maxlength / (2.0f * path.size());
+    float length = (float)maxlength / std::pow(2.0f, path.size());
 
     //    4--------6
     //   /|       /|
@@ -239,7 +245,7 @@ void OctManager::generateTreeMesh(std::vector<float>& vertices, std::vector<uint
         nodeStack.pop();
 
         if (isLeafNode(*node)) {
-            glm::vec3 nodeOrigin = pathToCubeOrigin(node->path, maxdepth, rootNodeEdgeLength);
+            glm::vec3 nodeOrigin = pathToCubeOrigin(node->path, rootNodeEdgeLength);
 
             // generate triangles and indices
 
