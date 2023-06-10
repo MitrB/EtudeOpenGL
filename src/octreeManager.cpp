@@ -150,17 +150,7 @@ void OctManager::printFullTree(const TreeNode& node) {
 }
 
 void OctManager::init() {
-    std::vector<NodePosition> path = {ln, le};
-    addNode(path);
-    std::vector<NodePosition> path2 = {us, le};
-    // addNode(path2);
-
-    // generate mesh
-    std::vector<float> vertices{};
-    std::vector<uint> indices{};
-    generateTreeMesh(vertices, indices);
-
-    printFullTree(tree);
+    // printFullTree(tree);
 }
 
 /**
@@ -238,7 +228,7 @@ std::vector<glm::vec<3, float>> getCubeLocalVertices(const std::vector<NodePosit
     return vertices;
 }
 
-void OctManager::generateTreeMesh(std::vector<float> &vertices, std::vector<uint> &indices) {
+void OctManager::generateTreeMesh(std::vector<float>& vertices, std::vector<uint>& indices) {
     std::unordered_map<glm::vec3, uint> vertexTable{};
 
     std::stack<TreeNode*> nodeStack{};
@@ -255,7 +245,6 @@ void OctManager::generateTreeMesh(std::vector<float> &vertices, std::vector<uint
 
             std::vector<glm::vec3> localVertices = getCubeLocalVertices(node->path, maxdepth, rootNodeEdgeLength);
 
-
             for (auto& vertex : localVertices) {
                 vertex += nodeOrigin;
             }
@@ -263,24 +252,21 @@ void OctManager::generateTreeMesh(std::vector<float> &vertices, std::vector<uint
             std::vector<uint> baseIndices{0, 1, 2, 2, 1, 3, 0, 4, 5, 0, 5, 1, 1, 5, 7, 1, 7, 3,
                                           2, 3, 7, 2, 7, 6, 2, 6, 4, 0, 6, 4, 5, 4, 7, 7, 4, 6};
 
-            
             // no duplicate vertices
-            for (uint &index : baseIndices) {
-                if (vertexTable.count(localVertices[index]) > 0) { // is in hashtable
+            for (uint& index : baseIndices) {
+                if (vertexTable.count(localVertices[index]) > 0) {  // is in hashtable
                     index = vertexTable[localVertices[index]];
-                }
-                else {
-
+                } else {
                     vertices.push_back(localVertices[index].x);
                     vertices.push_back(localVertices[index].y);
                     vertices.push_back(localVertices[index].z);
-                    vertexTable[localVertices[index]] = vertices.size()/3 - 1; // add to hashtable with true index value
-                    index = vertices.size()/3 -1; // change index to be the true index
+                    vertexTable[localVertices[index]] =
+                        vertices.size() / 3 - 1;      // add to hashtable with true index value
+                    index = vertices.size() / 3 - 1;  // change index to be the true index
                 }
             }
 
-
-            indices.insert(indices.end(), baseIndices.begin(), baseIndices.end()); // concat with index vector
+            indices.insert(indices.end(), baseIndices.begin(), baseIndices.end());  // concat with index vector
 
             continue;  // leaf node = no children
         }

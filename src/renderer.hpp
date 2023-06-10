@@ -8,6 +8,9 @@
 #include <SDL2/SDL_video.h>
 
 #include <iostream>
+#include <vector>
+
+#include "shader.hpp"
 
 namespace etudegl {
 class Renderer {
@@ -15,8 +18,12 @@ public:
     int width = 640;
     int height = 640;
 
+    uint VBO;
+    uint VAO;
+    uint EBO;
+
     SDL_Window *window{nullptr};
-    SDL_GLContext maincontext;
+    SDL_GLContext maincontext{};
 
     int init();
     bool run();  // poll SDL input events
@@ -26,5 +33,11 @@ public:
     // OpenGL specific flags
     SDL_WindowFlags getWindowFlags();
     void framebuffer_size_callback(SDL_Window *window, int width, int height);
+
+    uint trianglesToDrawExpressedInVertices{};
+    void createBuffers(std::vector<float> &vertices, std::vector<uint> &indices);
+
+private:
+    Shader basicShader{};
 };
 }  // namespace etudegl
