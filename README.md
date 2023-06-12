@@ -1,7 +1,7 @@
 # EtudeOpenGL
 An exercise in OpenGL and graphics programming in general.
 
-## Dependancies
+## Dependencies
 
 * glm
 * sdl2
