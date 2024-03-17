@@ -1,13 +1,8 @@
-#include "engine.hpp"
+#include "../third_party/fmt/include/fmt/core.h"
+#include <GLFW/glfw3.h>
+
 
 int main() {
-    etudegl::Engine engine{};
-
-    engine.init();
-
-    engine.run();
-
-    engine.cleanup();
-
+    fmt::print("Hello OpenGl\n");
     return 0;
 }
