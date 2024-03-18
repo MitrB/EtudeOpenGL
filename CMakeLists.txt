@@ -10,8 +10,9 @@ add_subdirectory(third_party)
 
 file(GLOB_RECURSE SOURCES 
    ${PROJECT_SOURCE_DIR}/src/*.cpp 
+   ${PROJECT_SOURCE_DIR}/src/*.c
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(etudegl PRIVATE glfw glm imgui fmt dl pthread X11 Xxf86vm Xrandr Xi glad)
+target_link_libraries(etudegl PRIVATE glfw glm imgui fmt dl pthread X11 Xxf86vm Xrandr Xi glad ${CMAKE_DL_LIBS} ${OPENGL_LIBRARIES})

@@ -18,11 +18,5 @@ target_sources(imgui PRIVATE
   imgui/imgui_impl_glfw.cpp
 )
 
-add_library(glad STATIC)
-target_include_directories(glad PUBLIC glad)
-target_sources(glad PRIVATE
-  glad/glad.h
-  KHR/khrplatform.h
-  glad.c
-)
-
+add_library(glad STATIC glad.c)
+target_include_directories(glad PUBLIC glad KHR)
