@@ -1,9 +1,11 @@
 add_library(glm INTERFACE)
+add_library(stb_image INTERFACE)
 
 add_subdirectory(fmt EXCLUDE_FROM_ALL)
 add_subdirectory(glfw EXCLUDE_FROM_ALL)
 
 target_include_directories(glm INTERFACE glm)
+target_include_directories(stb_image INTERFACE stb_image)
 
 add_library(imgui STATIC)
 target_include_directories(imgui PUBLIC imgui)

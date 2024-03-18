@@ -15,4 +15,4 @@ file(GLOB_RECURSE SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(etudegl PRIVATE glfw glm imgui fmt dl pthread X11 Xxf86vm Xrandr Xi glad ${CMAKE_DL_LIBS} ${OPENGL_LIBRARIES})
+target_link_libraries(etudegl PRIVATE glfw glm imgui fmt dl pthread X11 Xxf86vm Xrandr Xi glad ${CMAKE_DL_LIBS} ${OPENGL_LIBRARIES} stb_image)
