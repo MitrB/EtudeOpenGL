@@ -3,25 +3,60 @@
 #include <math.h>
 #include <pthread.h>
 
-#include <glm/ext/matrix_transform.hpp>
-#include <glm/ext/quaternion_geometric.hpp>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <glm/detail/qualifier.hpp>
 #include <glm/ext/vector_float3.hpp>
-#include <glm/geometric.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "../third_party/fmt/include/fmt/core.h"
+#include "../third_party/fmt/include/fmt/format.h"
 #include "shader.hpp"
 #define STB_IMAGE_IMPLEMENTATION
-// #include <stb_image.h>
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 #include "../third_party/stb_image/stb_image.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "../third_party/tiny_obj_loader/tiny_obj_loader.h"
+
+struct Vertex {
+    glm::vec3 position{};
+    glm::vec3 normal{};
+
+    bool operator==(const Vertex& other) const { return position == other.position && normal == other.normal; }
+};
+
+// from: https://stackoverflow.com/a/57595105
+template <typename T, typename... Rest>
+void hashCombine(std::size_t& seed, T const& v, Rest&&... rest) {
+    std::hash<T> hasher;
+    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    int i[] = {0, (hashCombine(seed, std::forward<Rest>(rest)), 0)...};
+    (void)(i);
+}
+
+namespace std {
+template <>
+struct hash<Vertex> {
+    size_t operator()(Vertex const& vertex) const {
+        size_t seed = 0;
+        hashCombine(seed, vertex.position, vertex.normal);
+        return seed;
+    }
+};
+}  // namespace std
 
 static constexpr int WIDTH = 1920 / 2;
 static constexpr int HEIGHT = 1080 / 2;
 
-glm::vec2 mouse_last_position{WIDTH/2, HEIGHT/2};
+glm::vec2 mouse_last_position{WIDTH / 2, HEIGHT / 2};
 glm::vec3 camera_front{0.0f, 0.0f, -1.0f};
 glm::vec3 camera_position{0.0f, 0.0f, 3.0f};
 glm::vec3 camera_up{0.0f, 1.0f, 0.0f};
@@ -72,50 +107,65 @@ int main() {
     glViewport(0, 0, WIDTH, HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // data
+    // models
 
-    float vertices[] = {0.5f,
-                        0.5f,
-                        0.0f,
-                        1.0f,
-                        0.0f,
-                        0.0f,
-                        1.0f,
-                        1.0f,  // top right
-                        0.5f,
-                        -0.5f,
-                        0.0f,
-                        0.0f,
-                        1.0f,
-                        0.0f,
-                        1.0f,
-                        0.0f,  // bottom right
-                        -0.5f,
-                        -0.5f,
-                        0.0f,
-                        0.0f,
-                        0.0f,
-                        1.0f,
-                        0.0f,
-                        0.0f,  // bottom left
-                        -0.5f,
-                        0.5f,
-                        0.0f,
-                        1.0f,
-                        1.0f,
-                        0.0f,
-                        0.0f,
-                        1.0f  // top left
-                            - 0.5f,
-                        0.5f,
-                        0.5f,
-                        1.0f,
-                        1.0f,
-                        0.0f,
-                        0.0f,
-                        1.0f};
+    // tiny_obj
 
-    unsigned int indices[] = {0, 1, 2, 2, 3, 0, 0, 1, 4};
+    std::string mido_model_file = "../assets/mido_01.obj";
+    tinyobj::ObjReaderConfig reader_config;
+    reader_config.mtl_search_path = "../assets";
+
+    tinyobj::ObjReader reader;
+
+    reader.ParseFromFile(mido_model_file);
+    if (!reader.ParseFromFile(mido_model_file, reader_config)) {
+        if (!reader.Error().empty()) {
+            std::cerr << "TinyObjReader: " << reader.Error();
+        }
+        exit(1);
+    }
+
+    if (!reader.Warning().empty()) {
+        std::cout << "TinyObjReader: " << reader.Warning();
+    }
+
+    auto& attrib = reader.GetAttrib();
+    auto& shapes = reader.GetShapes();
+    auto& materials = reader.GetMaterials();
+
+    std::vector<Vertex> vertices{};
+    std::vector<uint16_t> indices{};
+
+    std::unordered_map<Vertex, uint32_t> unique_vertices;
+
+    // Loop over shapes
+    for (const auto& shape : shapes) {
+        for (const auto& index : shape.mesh.indices) {
+            Vertex vertex{};
+
+            if (index.vertex_index >= 0) {
+                vertex.position = {
+                    attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2],
+                };
+            }
+
+            if (index.normal_index >= 0) {
+                vertex.normal = {
+                    attrib.normals[3 * index.normal_index + 0],
+                    attrib.normals[3 * index.normal_index + 1],
+                    attrib.normals[3 * index.normal_index + 2],
+                };
+            }
+
+            if (unique_vertices.count(vertex) == 0) {
+                unique_vertices[vertex] = static_cast<uint32_t>(vertices.size());
+                vertices.push_back(vertex);
+            }
+            indices.push_back(unique_vertices[vertex]);
+        }
+    }
 
     // read shaders
     Shader shader{"../shaders/basic_shader.vert", "../shaders/basic_shader.frag"};
@@ -157,9 +207,7 @@ int main() {
     stbi_image_free(data);
 
     // buffers
-    unsigned int VBO;
-    unsigned int EBO;
-    unsigned int VAO;
+    unsigned int VBO, EBO, VAO;
 
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -168,17 +216,19 @@ int main() {
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+    // glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), vertices.data(), GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(uint16_t), indices.data(), GL_STATIC_DRAW);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);  // coords
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));  // colors
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));  // texuture
-    glEnableVertexAttribArray(2);
+    // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));  // texuture
+    // glEnableVertexAttribArray(2);
 
     // wireframe mode
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -195,9 +245,9 @@ int main() {
 
     // prepare draw call
     shader.use();
-    shader.setFloat("mix_value", 0.1);
-    shader.setInt("texture0", 0);
-    shader.setInt("texture1", 1);
+    // shader.setFloat("mix_value", 0.1);
+    // shader.setInt("texture0", 0);
+    // shader.setInt("texture1", 1);
 
     float delta = 0.0f;
     float last_frame = 0.0f;
@@ -227,7 +277,7 @@ int main() {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // model = glm::rotate(model, (float)glfwGetTime() / 800.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, (float)glfwGetTime() / 800.0f, glm::vec3(0.0f, 1.0f, 0.0f));
 
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
@@ -244,12 +294,12 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // rendering
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture0);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture1);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_2D, texture0);
+        // glActiveTexture(GL_TEXTURE1);
+        // glBindTexture(GL_TEXTURE_2D, texture1);
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_SHORT, 0);
 
         // check and call events and swap buffers
         glfwPollEvents();
