@@ -1,6 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <math.h>
+#include <pthread.h>
 
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/quaternion_geometric.hpp>
@@ -20,7 +21,41 @@
 static constexpr int WIDTH = 1920 / 2;
 static constexpr int HEIGHT = 1080 / 2;
 
+glm::vec2 mouse_last_position{WIDTH/2, HEIGHT/2};
+glm::vec3 camera_front{0.0f, 0.0f, -1.0f};
+glm::vec3 camera_position{0.0f, 0.0f, 3.0f};
+glm::vec3 camera_up{0.0f, 1.0f, 0.0f};
+glm::mat4 view{};
+
+float yaw{-90.0f};
+float pitch{0.0f};
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) { glViewport(0, 0, width, height); }
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    float delta_x = xpos - mouse_last_position.x;
+    float delta_y = ypos - mouse_last_position.y;
+    mouse_last_position = glm::vec2{xpos, ypos};
+
+    const float sensitivity = 0.1f;
+    delta_x *= sensitivity;
+    delta_y *= sensitivity;
+
+    yaw += delta_x;
+    pitch -= delta_y;
+
+    if (pitch < -89.0f) {
+        pitch = -89.0f;
+    }
+    if (pitch > 89.0f) {
+        pitch = 89.0f;
+    }
+
+    glm::vec3 direction{};
+    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.y = sin(glm::radians(pitch));
+    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    camera_front = glm::normalize(direction);
+};
 
 int main() {
     fmt::print("Hello OpenGl\n");
@@ -151,13 +186,8 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     // space
-
     glm::mat4 model = glm::mat4(1.0f);
 
-    glm::mat4 view;
-    glm::vec3 camera_position{0.0f, 0.0f, 3.0f};
-    glm::vec3 camera_front{0.0f, 0.0f, -1.0f};
-    glm::vec3 camera_up{0.0f, 1.0f, 0.0f};
     view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
     glm::mat4 projection;
@@ -169,13 +199,20 @@ int main() {
     shader.setInt("texture0", 0);
     shader.setInt("texture1", 1);
 
+    float delta = 0.0f;
+    float last_frame = 0.0f;
+
     while (!glfwWindowShouldClose(window)) {
+        float current_frame = glfwGetTime();
+        delta = current_frame - last_frame;
+        last_frame = current_frame;
+
         // Input
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
         }
 
-        const float cameraSpeed = 0.05f;  // adjust accordingly
+        const float cameraSpeed = 5.0f * delta;  // adjust accordingly
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera_position += cameraSpeed * camera_front;
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera_position -= cameraSpeed * camera_front;
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
@@ -183,10 +220,15 @@ int main() {
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
             camera_position += glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
 
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        glfwSetCursorPosCallback(window, mouse_callback);
+
+        // sync
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // model = glm::rotate(model, (float)glfwGetTime() / 800.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-        // camera_position = glm::vec3(3.0f * sin(glfwGetTime()), camera_position.y, 3.0f * cos(glfwGetTime()));
+
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
         unsigned int model_location = glGetUniformLocation(shader.ID, "model");
