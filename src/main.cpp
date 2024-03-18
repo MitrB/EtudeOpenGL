@@ -187,7 +187,7 @@ int main() {
 
         // model = glm::rotate(model, (float)glfwGetTime() / 800.0f, glm::vec3(1.0f, 0.0f, 0.0f));
         // camera_position = glm::vec3(3.0f * sin(glfwGetTime()), camera_position.y, 3.0f * cos(glfwGetTime()));
-    view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
+        view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
         unsigned int model_location = glGetUniformLocation(shader.ID, "model");
         glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
