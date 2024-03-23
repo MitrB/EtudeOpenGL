@@ -272,6 +272,10 @@ int main() {
         light_shader.use();
         light_shader.setMat4("projection", projection);
         light_shader.setMat4("view", view);
+        // light post calc
+        float angle_a = 0.5*delta;
+        light_pos = glm::vec3(light_pos.x * cos(angle_a) - light_pos.z * sin(angle_a), light_pos.y, light_pos.x * sin(angle_a) + light_pos.z * cos(angle_a));
+
         model = glm::mat4(1.0f);
         model = glm::translate(model, light_pos);
         model = glm::scale(model, glm::vec3(0.2f));
