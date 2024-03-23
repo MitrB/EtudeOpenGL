@@ -2,11 +2,13 @@
 #include <GLFW/glfw3.h>
 #include <math.h>
 #include <pthread.h>
+#include <stdio.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <glm/detail/qualifier.hpp>
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <string>
@@ -24,10 +26,21 @@
 #include "../third_party/stb_image/stb_image.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
+#include "../third_party/imgui/imgui_impl_glfw.h"
+#include "../third_party/imgui/imgui_impl_opengl3.h"
 #include "../third_party/tiny_obj_loader/tiny_obj_loader.h"
+
+bool debug_mode = true;
+
+float interaction_timeout_max = 0.1;
+float interaction_timeout = 0;
 
 // lighting
 glm::vec3 light_pos(2.0f, 2.0f, 2.0f);
+
+float ambient = 0.2f;
+float specular = 0.5f;
+float shinyness = 4.0f;
 
 struct Vertex {
     glm::vec3 position{};
@@ -70,6 +83,10 @@ float pitch{0.0f};
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) { glViewport(0, 0, width, height); }
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
+    if (debug_mode) {
+        return;
+    }
     float delta_x = xpos - mouse_last_position.x;
     float delta_y = ypos - mouse_last_position.y;
     mouse_last_position = glm::vec2{xpos, ypos};
@@ -110,7 +127,19 @@ int main() {
     glViewport(0, 0, WIDTH, HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // models
+    // imgui
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
+
+    ImGui::StyleColorsLight();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
 
     // tiny_obj
 
@@ -218,6 +247,8 @@ int main() {
 
     glm::mat4 projection;
     projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+            
+    glfwSetCursorPosCallback(window, mouse_callback);
 
     float delta = 0.0f;
     float last_frame = 0.0f;
@@ -227,21 +258,37 @@ int main() {
         delta = current_frame - last_frame;
         last_frame = current_frame;
 
-        // Input
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            glfwSetWindowShouldClose(window, true);
+        interaction_timeout -= delta;
+        if (interaction_timeout < 0.0) {
+            interaction_timeout = 0.0;
         }
 
-        const float cameraSpeed = 5.0f * delta;  // adjust accordingly
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera_position += cameraSpeed * camera_front;
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera_position -= cameraSpeed * camera_front;
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            camera_position -= glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            camera_position += glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
+        glfwPollEvents();
 
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        glfwSetCursorPosCallback(window, mouse_callback);
+        // Input
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS and interaction_timeout <= 0) {
+            // glfwSetWindowShouldClose(window, true);
+            int cursorMode = glfwGetInputMode(window, GLFW_CURSOR);
+            if (cursorMode == GLFW_CURSOR_NORMAL) {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                debug_mode = false;
+            } else {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                debug_mode = true;
+            }
+            interaction_timeout = interaction_timeout_max;
+        }
+
+        if (!debug_mode) {
+            const float cameraSpeed = 5.0f * delta;  // adjust accordingly
+            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera_position += cameraSpeed * camera_front;
+            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera_position -= cameraSpeed * camera_front;
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+                camera_position -= glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+                camera_position += glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
+        }
+
 
         // sync
 
@@ -251,8 +298,12 @@ int main() {
         // rendering
         shader.use();
         shader.setVec3("object_color", 1.0f, 0.5f, 0.31f);
-        shader.setVec3("light_color",  1.0f, 1.0f, 1.0f);
+        shader.setVec3("light_color", 1.0f, 1.0f, 1.0f);
         shader.setVec3("light_pos", light_pos.x, light_pos.y, light_pos.z);
+        shader.setVec3("view_pos", camera_position);
+        shader.setFloat("ambient_strength", ambient);
+        shader.setFloat("specular_strength", specular);
+        shader.setFloat("shinyness", shinyness);
 
         model = glm::mat4(1.0f);
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
@@ -273,8 +324,9 @@ int main() {
         light_shader.setMat4("projection", projection);
         light_shader.setMat4("view", view);
         // light post calc
-        float angle_a = 0.5*delta;
-        light_pos = glm::vec3(light_pos.x * cos(angle_a) - light_pos.z * sin(angle_a), light_pos.y, light_pos.x * sin(angle_a) + light_pos.z * cos(angle_a));
+        float angle_a = 0.5 * delta;
+        light_pos = glm::vec3(light_pos.x * cos(angle_a) - light_pos.z * sin(angle_a), light_pos.y,
+                              light_pos.x * sin(angle_a) + light_pos.z * cos(angle_a));
 
         model = glm::mat4(1.0f);
         model = glm::translate(model, light_pos);
@@ -284,15 +336,33 @@ int main() {
         glBindVertexArray(lightVAO);
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_SHORT, 0);
 
+        // imgui
+
+        if (debug_mode) {
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            ImGui::SliderFloat("Ambient", &ambient, 0.0f, 1.0f);
+            ImGui::SliderFloat("Specular", &specular, 0.0f, 1.0f);
+            ImGui::InputFloat("Shinyness", &shinyness);
+
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        }
+
         // check and call events and swap buffers
         glfwSwapBuffers(window);
-        glfwPollEvents();
     }
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteVertexArrays(1, &lightVAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     glfwTerminate();
     return 0;
