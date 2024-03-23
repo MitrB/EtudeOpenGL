@@ -81,8 +81,8 @@ struct hash<Vertex> {
 };
 }  // namespace std
 
-static constexpr int WIDTH = 1920 / 2;
-static constexpr int HEIGHT = 1080 / 2;
+static constexpr int WIDTH = 1920;
+static constexpr int HEIGHT = 1080;
 
 glm::vec2 mouse_last_position{WIDTH / 2, HEIGHT / 2};
 glm::vec3 camera_front{0.0f, 0.0f, -1.0f};
@@ -259,7 +259,7 @@ int main() {
     view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
     glm::mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(45.0f), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
             
     glfwSetCursorPosCallback(window, mouse_callback);
 

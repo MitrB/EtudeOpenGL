@@ -8,7 +8,6 @@ out vec3 frag_normal;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform vec3 view_pos;
 
 void main()
 {
