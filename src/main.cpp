@@ -38,9 +38,10 @@ float interaction_timeout = 0;
 // lighting
 glm::vec3 light_pos(2.0f, 2.0f, 2.0f);
 
-float ambient = 0.2f;
-float specular = 0.5f;
-float shinyness = 4.0f;
+glm::vec3 ambient{0.0, 0.05, 0.05};
+glm::vec3 diffuse{0.4, 0.5, 0.5};
+glm::vec3 specular{0.04, 0.7, 0.7};
+float shininess = 32.0f;
 
 struct Vertex {
     glm::vec3 position{};
@@ -301,9 +302,10 @@ int main() {
         shader.setVec3("light_color", 1.0f, 1.0f, 1.0f);
         shader.setVec3("light_pos", light_pos.x, light_pos.y, light_pos.z);
         shader.setVec3("view_pos", camera_position);
-        shader.setFloat("ambient_strength", ambient);
-        shader.setFloat("specular_strength", specular);
-        shader.setFloat("shinyness", shinyness);
+        shader.setVec3("material.ambient", ambient);
+        shader.setVec3("material.diffuse", diffuse);
+        shader.setVec3("material.specular", specular);
+        shader.setFloat("material.shininess", shininess);
 
         model = glm::mat4(1.0f);
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
@@ -336,16 +338,17 @@ int main() {
         glBindVertexArray(lightVAO);
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_SHORT, 0);
 
-        // imgui
+        // o
 
         if (debug_mode) {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
 
-            ImGui::SliderFloat("Ambient", &ambient, 0.0f, 1.0f);
-            ImGui::SliderFloat("Specular", &specular, 0.0f, 1.0f);
-            ImGui::InputFloat("Shinyness", &shinyness);
+            ImGui::ColorEdit3("Ambient Color", &ambient.r);
+            ImGui::ColorEdit3("Diffuse Color", &diffuse.r);
+            ImGui::ColorEdit3("Specular Color", &specular.r);
+            ImGui::InputFloat("Shininess", &shininess);
 
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
