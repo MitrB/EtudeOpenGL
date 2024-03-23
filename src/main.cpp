@@ -9,6 +9,7 @@
 #include <functional>
 #include <glm/detail/qualifier.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <string>
@@ -31,6 +32,7 @@
 #include "../third_party/tiny_obj_loader/tiny_obj_loader.h"
 
 bool debug_mode = true;
+glm::vec2 mouse_offset{};
 
 float interaction_timeout_max = 0.1;
 float interaction_timeout = 0;
@@ -38,9 +40,18 @@ float interaction_timeout = 0;
 // lighting
 glm::vec3 light_pos(2.0f, 2.0f, 2.0f);
 
+// light values
+// glm::vec3 l_ambient{0.2, 0.2, 0.2};
+// glm::vec3 l_diffuse{0.5, 0.5, 0.5};
+// glm::vec3 l_specular{1.0, 1.0, 1.0};
+glm::vec3 l_ambient{1.0, 1.0, 1.0};
+glm::vec3 l_diffuse{1.0, 1.0, 1.0};
+glm::vec3 l_specular{1.0, 1.0, 1.0};
+
 glm::vec3 ambient{0.0, 0.05, 0.05};
 glm::vec3 diffuse{0.4, 0.5, 0.5};
 glm::vec3 specular{0.04, 0.7, 0.7};
+
 float shininess = 32.0f;
 
 struct Vertex {
@@ -86,6 +97,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) { glVi
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
     if (debug_mode) {
+        mouse_offset = glm::vec2{xpos, ypos};
         return;
     }
     float delta_x = xpos - mouse_last_position.x;
@@ -253,6 +265,8 @@ int main() {
 
     float delta = 0.0f;
     float last_frame = 0.0f;
+    
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     while (!glfwWindowShouldClose(window)) {
         float current_frame = glfwGetTime();
@@ -264,14 +278,19 @@ int main() {
             interaction_timeout = 0.0;
         }
 
+        // light post calc
+        float angle_a = 0.5 * delta;
+        light_pos = glm::vec3(light_pos.x * cos(angle_a) - light_pos.z * sin(angle_a), light_pos.y,
+                              light_pos.x * sin(angle_a) + light_pos.z * cos(angle_a));
+
         glfwPollEvents();
 
         // Input
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS and interaction_timeout <= 0) {
             // glfwSetWindowShouldClose(window, true);
-            int cursorMode = glfwGetInputMode(window, GLFW_CURSOR);
-            if (cursorMode == GLFW_CURSOR_NORMAL) {
+            if (debug_mode) {
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                mouse_last_position = mouse_offset;
                 debug_mode = false;
             } else {
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -280,7 +299,7 @@ int main() {
             interaction_timeout = interaction_timeout_max;
         }
 
-        if (!debug_mode) {
+        // if (!debug_mode) {
             const float cameraSpeed = 5.0f * delta;  // adjust accordingly
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera_position += cameraSpeed * camera_front;
             if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera_position -= cameraSpeed * camera_front;
@@ -288,7 +307,7 @@ int main() {
                 camera_position -= glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
             if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
                 camera_position += glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
-        }
+        // }
 
 
         // sync
@@ -306,6 +325,10 @@ int main() {
         shader.setVec3("material.diffuse", diffuse);
         shader.setVec3("material.specular", specular);
         shader.setFloat("material.shininess", shininess);
+        shader.setVec3("light.ambient", l_ambient);
+        shader.setVec3("light.diffuse", l_diffuse);
+        shader.setVec3("light.specular", l_specular);
+        shader.setVec3("light.position", light_pos);
 
         model = glm::mat4(1.0f);
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
@@ -325,11 +348,6 @@ int main() {
         light_shader.use();
         light_shader.setMat4("projection", projection);
         light_shader.setMat4("view", view);
-        // light post calc
-        float angle_a = 0.5 * delta;
-        light_pos = glm::vec3(light_pos.x * cos(angle_a) - light_pos.z * sin(angle_a), light_pos.y,
-                              light_pos.x * sin(angle_a) + light_pos.z * cos(angle_a));
-
         model = glm::mat4(1.0f);
         model = glm::translate(model, light_pos);
         model = glm::scale(model, glm::vec3(0.2f));
@@ -349,6 +367,10 @@ int main() {
             ImGui::ColorEdit3("Diffuse Color", &diffuse.r);
             ImGui::ColorEdit3("Specular Color", &specular.r);
             ImGui::InputFloat("Shininess", &shininess);
+
+            ImGui::ColorEdit3("Light Ambient Color", &l_ambient.r);
+            ImGui::ColorEdit3("Light Diffuse Color", &l_diffuse.r);
+            ImGui::ColorEdit3("Light Specular Color", &l_specular.r);
 
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
