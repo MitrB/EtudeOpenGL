@@ -27,7 +27,7 @@
 #include "../third_party/tiny_obj_loader/tiny_obj_loader.h"
 
 // lighting
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+glm::vec3 light_pos(2.0f, 2.0f, 2.0f);
 
 struct Vertex {
     glm::vec3 position{};
@@ -174,42 +174,6 @@ int main() {
     Shader shader{"../shaders/basic_shader.vert", "../shaders/basic_shader.frag"};
     Shader light_shader{"../shaders/light_shader.vert", "../shaders/light_shader.frag"};
 
-    // textures
-    stbi_set_flip_vertically_on_load(true);
-    int width, height, nrChannels;
-    unsigned char* data = stbi_load("../assets/container.jpg", &width, &height, &nrChannels, 0);
-
-    unsigned int texture0;
-    glGenTextures(1, &texture0);
-    // texture params
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glBindTexture(GL_TEXTURE_2D, texture0);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    stbi_image_free(data);
-
-    data = stbi_load("../assets/face.png", &width, &height, &nrChannels, 0);
-    unsigned int texture1;
-    glGenTextures(1, &texture1);
-    // texture params
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glBindTexture(GL_TEXTURE_2D, texture1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    stbi_image_free(data);
-
     // buffers
     unsigned int VBO, EBO, VAO, lightVAO;
 
@@ -255,7 +219,6 @@ int main() {
     glm::mat4 projection;
     projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-
     float delta = 0.0f;
     float last_frame = 0.0f;
 
@@ -285,11 +248,11 @@ int main() {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
         // rendering
         shader.use();
         shader.setVec3("object_color", 1.0f, 0.5f, 0.31f);
         shader.setVec3("light_color",  1.0f, 1.0f, 1.0f);
+        shader.setVec3("light_pos", light_pos.x, light_pos.y, light_pos.z);
 
         model = glm::mat4(1.0f);
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
@@ -310,7 +273,7 @@ int main() {
         light_shader.setMat4("projection", projection);
         light_shader.setMat4("view", view);
         model = glm::mat4(1.0f);
-        model = glm::translate(model, lightPos);
+        model = glm::translate(model, light_pos);
         model = glm::scale(model, glm::vec3(0.2f));
         light_shader.setMat4("model", model);
 
