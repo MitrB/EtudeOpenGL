@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_transform.hpp>
 #include "ecs.h"
+#include "shader.hpp"
 #include "structs.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -11,6 +12,16 @@
 #include "../third_party/tiny_obj_loader/tiny_obj_loader.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) { glViewport(0, 0, width, height); }
+
+Renderer::Renderer() {
+    init();
+    shader = new Shader("../shaders/basic_shader.vert", "../shaders/basic_shader.frag");
+}
+
+Renderer::~Renderer() {
+    cleanup();
+    delete shader;
+}
 
 void Renderer::mouse_callback_static(GLFWwindow* window, double xpos, double ypos) {
     Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
@@ -78,6 +89,38 @@ void Renderer::init() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
+    model = load_model("../assets/cube.obj");
+    // Shader light_shader{"../shaders/light_shader.vert", "../shaders/light_shader.frag"};
+
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    glGenVertexArrays(1, &VAO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, model.vertices.size() * sizeof(Vertex), model.vertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices.size() * sizeof(uint16_t), model.indices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    glEnableVertexAttribArray(1);
+
+    glGenVertexArrays(1, &lightVAO);
+    glBindVertexArray(lightVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices.size() * sizeof(uint16_t), model.indices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    glEnableVertexAttribArray(1);
+    std::cout << "renderer initialized" << "\n";
 }
 
 Model Renderer::load_model(const char* path) {
@@ -144,38 +187,7 @@ Model Renderer::load_model(const char* path) {
 
 
 void Renderer::update(Update update) {
-    Model model = load_model("../assets/cube.obj");
-    Shader shader{"../shaders/basic_shader.vert", "../shaders/basic_shader.frag"};
-    Shader light_shader{"../shaders/light_shader.vert", "../shaders/light_shader.frag"};
-
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    glGenVertexArrays(1, &VAO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, model.vertices.size() * sizeof(Vertex), model.vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices.size() * sizeof(uint16_t), model.indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-    glEnableVertexAttribArray(1);
-
-    glGenVertexArrays(1, &lightVAO);
-    glBindVertexArray(lightVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices.size() * sizeof(uint16_t), model.indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-    glEnableVertexAttribArray(1);
+    // Shader shader{"../shaders/basic_shader.vert", "../shaders/basic_shader.frag"};
 
     // wireframe mode
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -188,7 +200,7 @@ void Renderer::update(Update update) {
     view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
     glm::mat4 projection;
-    projection = glm::perspective(glm::radians(85.0f), (float)WIDTH/(float)HEIGHT, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(85.0f), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
             
     glfwSetCursorPosCallback(window, mouse_callback_static);
 
@@ -229,32 +241,32 @@ void Renderer::update(Update update) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // rendering
-    shader.use();
-    shader.setVec3("object_color", 1.0f, 0.5f, 0.31f);
-    shader.setVec3("light_color", 1.0f, 1.0f, 1.0f);
-    shader.setVec3("light_pos", light_pos.x, light_pos.y, light_pos.z);
-    shader.setVec3("view_pos", camera_position);
-    shader.setVec3("material.ambient", ambient);
-    shader.setVec3("material.diffuse", diffuse);
-    shader.setVec3("material.specular", specular);
-    shader.setFloat("material.shininess", shininess);
-    shader.setVec3("light.ambient", l_ambient);
-    shader.setVec3("light.diffuse", l_diffuse);
-    shader.setVec3("light.specular", l_specular);
-    shader.setVec3("light.position", light_pos);
+    shader->use();
+    shader->setVec3("object_color", 1.0f, 0.5f, 0.31f);
+    shader->setVec3("light_color", 1.0f, 1.0f, 1.0f);
+    shader->setVec3("light_pos", light_pos.x, light_pos.y, light_pos.z);
+    shader->setVec3("view_pos", camera_position);
+    shader->setVec3("material.ambient", ambient);
+    shader->setVec3("material.diffuse", diffuse);
+    shader->setVec3("material.specular", specular);
+    shader->setFloat("material.shininess", shininess);
+    shader->setVec3("light.ambient", l_ambient);
+    shader->setVec3("light.diffuse", l_diffuse);
+    shader->setVec3("light.specular", l_specular);
+    shader->setVec3("light.position", light_pos);
 
     for (Entity entity : entities) {
         model_space = glm::mat4(1.0f);
         model_space = glm::translate(model_space, update.coordinator->get_component<PhysicsBody>(entity).position);
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
-        unsigned int model_location = glGetUniformLocation(shader.ID, "model");
+        unsigned int model_location = glGetUniformLocation(shader->ID, "model");
         glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model_space));
 
-        unsigned int view_location = glGetUniformLocation(shader.ID, "view");
+        unsigned int view_location = glGetUniformLocation(shader->ID, "view");
         glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
 
-        unsigned int projection_location = glGetUniformLocation(shader.ID, "projection");
+        unsigned int projection_location = glGetUniformLocation(shader->ID, "projection");
         glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
 
         glBindVertexArray(VAO);
@@ -321,8 +333,4 @@ void Renderer::cleanup() {
     ImGui::DestroyContext();
 
     glfwTerminate();
-}
-
-Renderer::~Renderer() {
-    cleanup();
 }

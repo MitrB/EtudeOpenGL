@@ -16,7 +16,7 @@
 
 
 using Entity = uint32_t;
-const Entity MAX_ENTITIES{1000};
+const Entity MAX_ENTITIES{1000000};
 inline constexpr Entity INVALID_ENTITY = 0;
 
 using ComponentType = uint8_t;
