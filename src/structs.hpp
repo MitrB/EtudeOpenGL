@@ -9,6 +9,7 @@
 
 struct PhysicsBody {
     glm::vec3 position;
+    glm::vec3 velocity;
 };
 
 

@@ -89,7 +89,7 @@ void Renderer::init() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    model = load_model("../assets/cube.obj");
+    model = load_model("../assets/sphere.obj");
     // Shader light_shader{"../shaders/light_shader.vert", "../shaders/light_shader.frag"};
 
     glGenBuffers(1, &VBO);

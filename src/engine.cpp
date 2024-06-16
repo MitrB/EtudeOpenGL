@@ -31,12 +31,12 @@ void Engine::init() {
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    for (size_t i; i < 100000; i++) {
+    for (size_t i; i < 100; i++) {
         Entity e = coordinator.create_entity();
         PhysicsBody body{};
-        body.position.x = random_float(-1000, 1000, gen);
-        body.position.y = random_float(-1000, 1000, gen);
-        body.position.z = random_float(-1000, 1000, gen);
+        body.position.x = random_float(-10, 10, gen);
+        body.position.y = random_float(-10, 10, gen);
+        body.position.z = random_float(-10, 10, gen);
         coordinator.add_component(e, body);
     }
 }
