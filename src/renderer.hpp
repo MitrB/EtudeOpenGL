@@ -20,6 +20,7 @@
 
 #include "../third_party/fmt/include/fmt/core.h"
 #include "../third_party/fmt/include/fmt/format.h"
+#include "ecs.h"
 #include "shader.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
@@ -29,47 +30,26 @@
 #include "../third_party/imgui/imgui_impl_opengl3.h"
 #include "../third_party/tiny_obj_loader/tiny_obj_loader.h"
 
+#include "structs.hpp"
 
-struct Vertex {
-    glm::vec3 position{};
-    glm::vec3 normal{};
 
-    bool operator==(const Vertex& other) const { return position == other.position && normal == other.normal; }
-};
 
-// from: https://stackoverflow.com/a/57595105
-template <typename T, typename... Rest>
-void hashCombine(std::size_t& seed, T const& v, Rest&&... rest) {
-    std::hash<T> hasher;
-    seed ^= (hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-    int i[] = {0, (hashCombine(seed, std::forward<Rest>(rest)), 0)...};
-    (void)(i);
-}
-
-namespace std {
-template <>
-struct hash<Vertex> {
-    size_t operator()(Vertex const& vertex) const {
-        size_t seed = 0;
-        hashCombine(seed, vertex.position, vertex.normal);
-        return seed;
-    }
-};
-}  // namespace std
-
-struct Model {
-    std::vector<uint16_t> indices; 
-    std::vector<Vertex> vertices;
-};
-
-class Renderer {
+class Renderer : public System {
     public:
+        ~Renderer();
+        bool close_window();
         Model load_model(const char* path);
 
         void init();
-        void draw();
+        void setup();
+        void update(Update update);
+        void cleanup();
 
     private:
+        // draw
+
+        unsigned int VBO, EBO, VAO, lightVAO;
+
         static void mouse_callback_static(GLFWwindow* window, double xpos, double ypos);
         void mouse_callback(GLFWwindow* window, double xpos, double ypos);
         

@@ -1,5 +1,8 @@
 #include "renderer.hpp"
 #include <GLFW/glfw3.h>
+#include <glm/ext/matrix_transform.hpp>
+#include "ecs.h"
+#include "structs.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../third_party/stb_image/stb_image.h"
@@ -74,18 +77,19 @@ void Renderer::init() {
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
+
 }
 
 Model Renderer::load_model(const char* path) {
 
-    std::string mido_model_file = path;
+    std::string model_file = path;
     tinyobj::ObjReaderConfig reader_config;
     reader_config.mtl_search_path = "../assets";
 
     tinyobj::ObjReader reader;
 
-    reader.ParseFromFile(mido_model_file);
-    if (!reader.ParseFromFile(mido_model_file, reader_config)) {
+    reader.ParseFromFile(model_file);
+    if (!reader.ParseFromFile(model_file, reader_config)) {
         if (!reader.Error().empty()) {
             std::cerr << "TinyObjReader: " << reader.Error();
         }
@@ -139,16 +143,10 @@ Model Renderer::load_model(const char* path) {
 
 
 
-void Renderer::draw() {
-    fmt::print("Hello OpenGl\n");
-
-    Model model = load_model("../assets/mido_01.obj");
-
+void Renderer::update(Update update) {
+    Model model = load_model("../assets/cube.obj");
     Shader shader{"../shaders/basic_shader.vert", "../shaders/basic_shader.frag"};
     Shader light_shader{"../shaders/light_shader.vert", "../shaders/light_shader.frag"};
-
-    // buffers
-    unsigned int VBO, EBO, VAO, lightVAO;
 
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
@@ -194,74 +192,60 @@ void Renderer::draw() {
             
     glfwSetCursorPosCallback(window, mouse_callback_static);
 
-    float delta = 0.0f;
-    float last_frame = 0.0f;
-    
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    interaction_timeout -= update.delta;
+    if (interaction_timeout < 0.0) {
+        interaction_timeout = 0.0;
+    }
 
-    while (!glfwWindowShouldClose(window)) {
-        float current_frame = glfwGetTime();
-        delta = current_frame - last_frame;
-        last_frame = current_frame;
+    glfwPollEvents();
 
-        interaction_timeout -= delta;
-        if (interaction_timeout < 0.0) {
-            interaction_timeout = 0.0;
+    // Input
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS and interaction_timeout <= 0) {
+        if (debug_mode) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            mouse_last_position = mouse_offset;
+            debug_mode = false;
+        } else {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            debug_mode = true;
         }
+        interaction_timeout = interaction_timeout_max;
+    }
 
-        // light post calc
-        float angle_a = 0.5 * delta;
-        light_pos = glm::vec3(light_pos.x * cos(angle_a) - light_pos.z * sin(angle_a), light_pos.y,
-                              light_pos.x * sin(angle_a) + light_pos.z * cos(angle_a));
-
-        glfwPollEvents();
-
-        // Input
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS and interaction_timeout <= 0) {
-            // glfwSetWindowShouldClose(window, true);
-            if (debug_mode) {
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                mouse_last_position = mouse_offset;
-                debug_mode = false;
-            } else {
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-                debug_mode = true;
-            }
-            interaction_timeout = interaction_timeout_max;
-        }
-
-        // if (!debug_mode) {
-            const float cameraSpeed = 5.0f * delta;  // adjust accordingly
-            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera_position += cameraSpeed * camera_front;
-            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera_position -= cameraSpeed * camera_front;
-            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-                camera_position -= glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
-            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-                camera_position += glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
-        // }
+    if (!debug_mode) {
+        const float cameraSpeed = 5.0f * update.delta;
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera_position += cameraSpeed * camera_front;
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera_position -= cameraSpeed * camera_front;
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            camera_position -= glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            camera_position += glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
+    }
 
 
-        // sync
+    // sync
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // rendering
-        shader.use();
-        shader.setVec3("object_color", 1.0f, 0.5f, 0.31f);
-        shader.setVec3("light_color", 1.0f, 1.0f, 1.0f);
-        shader.setVec3("light_pos", light_pos.x, light_pos.y, light_pos.z);
-        shader.setVec3("view_pos", camera_position);
-        shader.setVec3("material.ambient", ambient);
-        shader.setVec3("material.diffuse", diffuse);
-        shader.setVec3("material.specular", specular);
-        shader.setFloat("material.shininess", shininess);
-        shader.setVec3("light.ambient", l_ambient);
-        shader.setVec3("light.diffuse", l_diffuse);
-        shader.setVec3("light.specular", l_specular);
-        shader.setVec3("light.position", light_pos);
+    // rendering
+    shader.use();
+    shader.setVec3("object_color", 1.0f, 0.5f, 0.31f);
+    shader.setVec3("light_color", 1.0f, 1.0f, 1.0f);
+    shader.setVec3("light_pos", light_pos.x, light_pos.y, light_pos.z);
+    shader.setVec3("view_pos", camera_position);
+    shader.setVec3("material.ambient", ambient);
+    shader.setVec3("material.diffuse", diffuse);
+    shader.setVec3("material.specular", specular);
+    shader.setFloat("material.shininess", shininess);
+    shader.setVec3("light.ambient", l_ambient);
+    shader.setVec3("light.diffuse", l_diffuse);
+    shader.setVec3("light.specular", l_specular);
+    shader.setVec3("light.position", light_pos);
 
+    for (Entity entity : entities) {
         model_space = glm::mat4(1.0f);
+        model_space = glm::translate(model_space, update.coordinator->get_component<PhysicsBody>(entity).position);
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
         unsigned int model_location = glGetUniformLocation(shader.ID, "model");
@@ -275,49 +259,58 @@ void Renderer::draw() {
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_SHORT, 0);
-
-        shader.use();
-        model_space = glm::mat4(1.0f);
-        model_space = glm::translate(model_space, glm::vec3(1.0f, 0, 0));
-        shader.setMat4("model", model_space);
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_SHORT, 0);
-
-        light_shader.use();
-        light_shader.setMat4("projection", projection);
-        light_shader.setMat4("view", view);
-        model_space = glm::mat4(1.0f);
-        model_space = glm::translate(model_space, light_pos);
-        model_space = glm::scale(model_space, glm::vec3(0.2f));
-        light_shader.setMat4("model", model_space);
-
-        glBindVertexArray(lightVAO);
-        glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_SHORT, 0);
-
-        // o
-
-        if (debug_mode) {
-            ImGui_ImplOpenGL3_NewFrame();
-            ImGui_ImplGlfw_NewFrame();
-            ImGui::NewFrame();
-
-            ImGui::ColorEdit3("Ambient Color", &ambient.r);
-            ImGui::ColorEdit3("Diffuse Color", &diffuse.r);
-            ImGui::ColorEdit3("Specular Color", &specular.r);
-            ImGui::InputFloat("Shininess", &shininess);
-
-            ImGui::ColorEdit3("Light Ambient Color", &l_ambient.r);
-            ImGui::ColorEdit3("Light Diffuse Color", &l_diffuse.r);
-            ImGui::ColorEdit3("Light Specular Color", &l_specular.r);
-
-            ImGui::Render();
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        }
-
-        // check and call events and swap buffers
-        glfwSwapBuffers(window);
     }
 
+
+    // shader.use();
+    // model_space = glm::mat4(1.0f);
+    // model_space = glm::translate(model_space, glm::vec3(1.0f, 0, 0));
+    // shader.setMat4("model", model_space);
+    // glBindVertexArray(VAO);
+    // glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_SHORT, 0);
+
+    // light_shader.use();
+    // light_shader.setMat4("projection", projection);
+    // light_shader.setMat4("view", view);
+    // model_space = glm::mat4(1.0f);
+    // model_space = glm::translate(model_space, light_pos);
+    // model_space = glm::scale(model_space, glm::vec3(0.2f));
+    // light_shader.setMat4("model", model_space);
+
+    // glBindVertexArray(lightVAO);
+    // glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_SHORT, 0);
+
+    // o
+
+    if (debug_mode) {
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::ColorEdit3("Ambient Color", &ambient.r);
+        ImGui::ColorEdit3("Diffuse Color", &diffuse.r);
+        ImGui::ColorEdit3("Specular Color", &specular.r);
+        ImGui::InputFloat("Shininess", &shininess);
+
+        ImGui::ColorEdit3("Light Ambient Color", &l_ambient.r);
+        ImGui::ColorEdit3("Light Diffuse Color", &l_diffuse.r);
+        ImGui::ColorEdit3("Light Specular Color", &l_specular.r);
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    }
+
+    // check and call events and swap buffers
+    glfwSwapBuffers(window);
+
+}
+
+bool Renderer::close_window() {
+    return glfwWindowShouldClose(window);
+}
+
+
+void Renderer::cleanup() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteVertexArrays(1, &lightVAO);
     glDeleteBuffers(1, &VBO);
@@ -328,4 +321,8 @@ void Renderer::draw() {
     ImGui::DestroyContext();
 
     glfwTerminate();
+}
+
+Renderer::~Renderer() {
+    cleanup();
 }
