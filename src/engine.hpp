@@ -7,6 +7,7 @@
 #include "physics.hpp"
 #include "renderer.hpp"
 #include "structs.hpp"
+#include "model_manager.hpp"
 
 class Engine {
     public:

@@ -39,7 +39,6 @@ class Renderer : public System {
         Renderer();
         ~Renderer();
         bool close_window();
-        Model load_model(const char* path);
 
         void init();
         void update(Update update);
@@ -48,8 +47,6 @@ class Renderer : public System {
     private:
         // draw
 
-        unsigned int VBO, EBO, VAO, lightVAO;
-        Model model;
         Shader* shader;
 
         static void mouse_callback_static(GLFWwindow* window, double xpos, double ypos);

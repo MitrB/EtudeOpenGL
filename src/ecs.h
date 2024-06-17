@@ -200,7 +200,6 @@ class Coordinator;
 
 struct Update {
     float delta;
-    Coordinator* coordinator;
 };
 
 
@@ -208,6 +207,7 @@ class System {
     public:
         std::set<Entity> entities{};
         virtual void update(Update update){};
+        Coordinator* coordinator;
 };
 
 

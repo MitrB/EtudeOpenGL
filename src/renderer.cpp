@@ -2,14 +2,10 @@
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_transform.hpp>
 #include "ecs.h"
+#include "model_manager.hpp"
 #include "shader.hpp"
 #include "structs.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "../third_party/stb_image/stb_image.h"
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "../third_party/tiny_obj_loader/tiny_obj_loader.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) { glViewport(0, 0, width, height); }
 
@@ -89,111 +85,22 @@ void Renderer::init() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    model = load_model("../assets/sphere.obj");
-    // Shader light_shader{"../shaders/light_shader.vert", "../shaders/light_shader.frag"};
 
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    glGenVertexArrays(1, &VAO);
-
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, model.vertices.size() * sizeof(Vertex), model.vertices.data(), GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices.size() * sizeof(uint16_t), model.indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-    glEnableVertexAttribArray(1);
-
-    glGenVertexArrays(1, &lightVAO);
-    glBindVertexArray(lightVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, model.indices.size() * sizeof(uint16_t), model.indices.data(), GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-    glEnableVertexAttribArray(1);
-    std::cout << "renderer initialized" << "\n";
-}
-
-Model Renderer::load_model(const char* path) {
-
-    std::string model_file = path;
-    tinyobj::ObjReaderConfig reader_config;
-    reader_config.mtl_search_path = "../assets";
-
-    tinyobj::ObjReader reader;
-
-    reader.ParseFromFile(model_file);
-    if (!reader.ParseFromFile(model_file, reader_config)) {
-        if (!reader.Error().empty()) {
-            std::cerr << "TinyObjReader: " << reader.Error();
-        }
-        exit(1);
-    }
-
-    if (!reader.Warning().empty()) {
-        std::cout << "TinyObjReader: " << reader.Warning();
-    }
-
-    auto& attrib = reader.GetAttrib();
-    auto& shapes = reader.GetShapes();
-    auto& materials = reader.GetMaterials();
-
-    Model model;
-
-    std::unordered_map<Vertex, uint32_t> unique_vertices;
-
-    // TODO: load textures and materials
-    // Loop over shapes
-    for (const auto& shape : shapes) {
-        for (const auto& index : shape.mesh.indices) {
-            Vertex vertex{};
-
-            if (index.vertex_index >= 0) {
-                vertex.position = {
-                    attrib.vertices[3 * index.vertex_index + 0],
-                    attrib.vertices[3 * index.vertex_index + 1],
-                    attrib.vertices[3 * index.vertex_index + 2],
-                };
-            }
-
-            if (index.normal_index >= 0) {
-                vertex.normal = {
-                    attrib.normals[3 * index.normal_index + 0],
-                    attrib.normals[3 * index.normal_index + 1],
-                    attrib.normals[3 * index.normal_index + 2],
-                };
-            }
-
-            if (unique_vertices.count(vertex) == 0) {
-                unique_vertices[vertex] = static_cast<uint32_t>(model.vertices.size());
-                model.vertices.push_back(vertex);
-            }
-            model.indices.push_back(unique_vertices[vertex]);
-        }
-    }
-
-    return model;
-}
-
-
-
-void Renderer::update(Update update) {
-    // Shader shader{"../shaders/basic_shader.vert", "../shaders/basic_shader.frag"};
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
 
     // wireframe mode
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    glEnable(GL_DEPTH_TEST);
+    glfwSetCursorPosCallback(window, mouse_callback_static);
 
+    std::cout << "renderer initialized" << "\n";
+}
+
+
+
+
+void Renderer::update(Update update) {
     // space
     glm::mat4 model_space = glm::mat4(1.0f);
 
@@ -201,8 +108,6 @@ void Renderer::update(Update update) {
 
     glm::mat4 projection;
     projection = glm::perspective(glm::radians(85.0f), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
-            
-    glfwSetCursorPosCallback(window, mouse_callback_static);
 
     interaction_timeout -= update.delta;
     if (interaction_timeout < 0.0) {
@@ -256,8 +161,10 @@ void Renderer::update(Update update) {
     shader->setVec3("light.position", light_pos);
 
     for (Entity entity : entities) {
+        Mesh& mesh = coordinator->get_component<Mesh>(entity);
+
         model_space = glm::mat4(1.0f);
-        model_space = glm::translate(model_space, update.coordinator->get_component<PhysicsBody>(entity).position);
+        model_space = glm::translate(model_space, coordinator->get_component<PhysicsBody>(entity).position);
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
         unsigned int model_location = glGetUniformLocation(shader->ID, "model");
@@ -269,8 +176,8 @@ void Renderer::update(Update update) {
         unsigned int projection_location = glGetUniformLocation(shader->ID, "projection");
         glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_SHORT, 0);
+        glBindVertexArray(mesh.VAO);
+        glDrawElements(GL_TRIANGLES, mesh.indices.size(), GL_UNSIGNED_SHORT, 0);
     }
 
 
@@ -323,10 +230,10 @@ bool Renderer::close_window() {
 
 
 void Renderer::cleanup() {
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteVertexArrays(1, &lightVAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
+    for (Entity entity : entities) {
+        Mesh& mesh = coordinator->get_component<Mesh>(entity);
+        ModelManager::cleanup(mesh);
+    }
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

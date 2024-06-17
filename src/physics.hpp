@@ -10,11 +10,11 @@ class Physics : public System {
     public:
         void update(Update update) {
             for (Entity e1 : entities) {
-                PhysicsBody& e1_info = update.coordinator->get_component<PhysicsBody>(e1);
+                PhysicsBody& e1_info = coordinator->get_component<PhysicsBody>(e1);
                 glm::vec3 force{0.0f, 0.0f, 0.0f};
                 for (Entity e2 : entities) {
                     if (e1 != e2) {
-                        PhysicsBody& e2_info = update.coordinator->get_component<PhysicsBody>(e2);
+                        PhysicsBody& e2_info = coordinator->get_component<PhysicsBody>(e2);
                         float distance = std::pow((e1_info.position.x - e2_info.position.x), 2.0f) + std::pow((e1_info.position.y - e2_info.position.y), 2.0f) + std::pow((e1_info.position.z - e2_info.position.z), 2.0f);
                         glm::vec3 direction = glm::normalize(e2_info.position - e1_info.position);
                         if (distance < 0.05f) {
