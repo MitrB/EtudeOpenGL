@@ -162,6 +162,8 @@ void Renderer::update(Update update) {
 
     for (Entity entity : entities) {
         Mesh& mesh = coordinator->get_component<Mesh>(entity);
+        shader->setInt("texture0", mesh.textures.front().id);
+        std::cout << mesh.textures.front().id << "\n";
 
         model_space = glm::mat4(1.0f);
         model_space = glm::translate(model_space, coordinator->get_component<PhysicsBody>(entity).position);

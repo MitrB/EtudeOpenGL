@@ -53,12 +53,12 @@ void ModelManager::load_mesh(const char* path, Mesh& mesh) {
                 };
             }
 
-            // if (index.texcoord_index >= 0) {
-            //     vertex.texture_coords = {
-            //         attrib.texcoords[2 * index.texcoord_index + 0],
-            //         attrib.texcoords[2 * index.texcoord_index + 1]
-            //     };
-            // }
+            if (index.texcoord_index >= 0) {
+                vertex.texture_coords = {
+                    attrib.texcoords[2 * index.texcoord_index + 0],
+                    attrib.texcoords[2 * index.texcoord_index + 1]
+                };
+            }
 
             if (unique_vertices.count(vertex) == 0) {
                 unique_vertices[vertex] = static_cast<uint32_t>(mesh.vertices.size());

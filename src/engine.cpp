@@ -38,6 +38,18 @@ void Engine::init() {
     std::random_device rd;
     std::mt19937 gen(rd());
 
+    Texture texture{};
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load("../assets/wall.jpg", &width, &height, &nrChannels, 0);
+    if (!data) {
+        std::cout << "Failed to load texture" << "\n";
+    }
+    unsigned int texture_id;
+    glGenTextures(1, &texture_id);  
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
     for (size_t i; i < 1000; i++) {
         Entity e = coordinator.create_entity();
         PhysicsBody body{};
@@ -49,22 +61,28 @@ void Engine::init() {
         Mesh mesh{};
         ModelManager::load_mesh("../assets/cube_textured.obj", mesh);
 
+        texture.id = texture_id - 1;
+        mesh.textures.push_back(texture);
+
+        glGenVertexArrays(1, &mesh.VAO);
         glGenBuffers(1, &mesh.VBO);
         glGenBuffers(1, &mesh.EBO);
-        glGenVertexArrays(1, &mesh.VAO);
 
         glBindVertexArray(mesh.VAO);
-
         glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
+
         glBufferData(GL_ARRAY_BUFFER, mesh.vertices.size() * sizeof(Vertex), mesh.vertices.data(), GL_STATIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.indices.size() * sizeof(uint16_t), mesh.indices.data(), GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
         glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texture_coords));
+        glBindVertexArray(0);
 
         coordinator.add_component(e, mesh);
 

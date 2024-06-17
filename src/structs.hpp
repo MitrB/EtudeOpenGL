@@ -19,7 +19,7 @@ struct PhysicsBody {
 struct Vertex {
     glm::vec3 position{};
     glm::vec3 normal{};
-    // glm::vec2 texture_coords{};
+    glm::vec2 texture_coords{};
 
     bool operator==(const Vertex& other) const { return position == other.position && normal == other.normal; }
 };
@@ -52,7 +52,7 @@ struct Texture {
 struct Mesh {
     std::vector<uint16_t> indices; 
     std::vector<Vertex> vertices;
-    // std::vector<Texture> textures;
+    std::vector<Texture> textures;
 
     unsigned int VAO, VBO, EBO;
 };

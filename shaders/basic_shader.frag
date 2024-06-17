@@ -19,12 +19,14 @@ out vec4 FragColor;
 
 in vec3 frag_pos;
 in vec3 frag_normal;
+in vec2 frag_texcoords;
 
 uniform Material material;
 uniform Light light;
 uniform vec3 object_color;
 uniform vec3 light_color;
 uniform vec3 view_pos;
+uniform sampler2D texture0;
   
 void main()
 {
@@ -41,5 +43,5 @@ void main()
     vec3 specular = light.specular * (spec * material.specular);
 
     vec3 result = ambient + diffuse + specular;
-    FragColor = vec4(result, 1.0);
+    FragColor = mix(texture(texture0, frag_texcoords), vec4(result, 1.0), 0.5);
 }
