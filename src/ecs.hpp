@@ -14,7 +14,6 @@
 #include <set>
 #include <unordered_map>
 
-
 using Entity = uint32_t;
 const Entity MAX_ENTITIES{1000000};
 inline constexpr Entity INVALID_ENTITY = 0;
@@ -235,12 +234,15 @@ class SystemManager {
                 system->entities.erase(entity);
             }
         }
-
         void entity_signature_change(Entity entity, Signature entity_signature) {
             for (auto const &pair : systems) {
                 auto const &type = pair.first;
                 auto const &system = pair.second;
                 auto const &system_signature = signatures[type];
+
+                // std::cout << "___" << "\n";
+                // std::cout << entity_signature << "\n";
+                // std::cout << system_signature << "\n";
 
                 if ((entity_signature & system_signature) == system_signature) {
                     system->entities.insert(entity);

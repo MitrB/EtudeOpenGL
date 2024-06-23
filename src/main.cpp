@@ -2,11 +2,10 @@
 
 
 int main() {
-    Engine engine{};
 
-    engine.init();
+    Engine::get_instance().init();
 
-    engine.run();
+    Engine::get_instance().run();
 
     return 0;
 }

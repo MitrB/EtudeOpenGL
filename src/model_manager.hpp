@@ -1,8 +1,9 @@
 #pragma once
 
 #include "structs.hpp"
-#include <iostream>
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <iostream>
 
 class ModelManager {
     public:

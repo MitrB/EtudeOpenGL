@@ -20,7 +20,7 @@
 
 #include "../third_party/fmt/include/fmt/core.h"
 #include "../third_party/fmt/include/fmt/format.h"
-#include "ecs.h"
+#include "ecs.hpp"
 #include "shader.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
@@ -39,10 +39,16 @@ class Renderer : public System {
         Renderer();
         ~Renderer();
         bool close_window();
+        void set_camera_position(glm::vec3 position);
 
         void init();
         void update(Update update);
         void cleanup();
+
+        GLFWwindow* get_window() {return window;}
+        glm::vec3 get_camera_front() {return camera_front;}
+        glm::vec3 get_camera_position() {return camera_position;}
+        glm::vec3 get_camera_up() {return camera_up;}
 
     private:
         // draw
@@ -56,6 +62,7 @@ class Renderer : public System {
         static constexpr int WIDTH = 1920;
         static constexpr int HEIGHT = 1080;
 
+
         bool debug_mode = true;
         glm::vec2 mouse_offset{};
 
@@ -68,11 +75,12 @@ class Renderer : public System {
         glm::vec3 camera_up{0.0f, 1.0f, 0.0f};
         glm::mat4 view{};
 
+
         float yaw{-90.0f};
         float pitch{0.0f};
 
         // lighting
-        glm::vec3 light_pos{2.0f, 2.0f, 2.0f};
+        glm::vec3 light_pos{0.0f, 2.0f, 0.0f};
 
         // light values
         // glm::vec3 l_ambient{0.2, 0.2, 0.2};

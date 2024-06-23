@@ -1,7 +1,7 @@
 #include "renderer.hpp"
 #include <GLFW/glfw3.h>
 #include <glm/ext/matrix_transform.hpp>
-#include "ecs.h"
+#include <glm/ext/vector_float3.hpp>
 #include "model_manager.hpp"
 #include "shader.hpp"
 #include "structs.hpp"
@@ -107,14 +107,13 @@ void Renderer::update(Update update) {
     view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
     glm::mat4 projection;
-    projection = glm::perspective(glm::radians(85.0f), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
+    projection = glm::perspective(glm::radians(80.0f), (float)WIDTH/(float)HEIGHT, 0.1f, 1000.0f);
 
     interaction_timeout -= update.delta;
     if (interaction_timeout < 0.0) {
         interaction_timeout = 0.0;
     }
 
-    glfwPollEvents();
 
     // Input
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS and interaction_timeout <= 0) {
@@ -129,15 +128,7 @@ void Renderer::update(Update update) {
         interaction_timeout = interaction_timeout_max;
     }
 
-    if (!debug_mode) {
-        const float cameraSpeed = 5.0f * update.delta;
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera_position += cameraSpeed * camera_front;
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera_position -= cameraSpeed * camera_front;
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            camera_position -= glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            camera_position += glm::normalize(glm::cross(camera_front, camera_up)) * cameraSpeed;
-    }
+
 
 
     // sync
@@ -163,10 +154,12 @@ void Renderer::update(Update update) {
     for (Entity entity : entities) {
         Mesh& mesh = coordinator->get_component<Mesh>(entity);
         shader->setInt("texture0", mesh.textures.front().id);
-        std::cout << mesh.textures.front().id << "\n";
 
         model_space = glm::mat4(1.0f);
-        model_space = glm::translate(model_space, coordinator->get_component<PhysicsBody>(entity).position);
+        Transformation& transformation_component = coordinator->get_component<Transformation>(entity);
+        model_space = glm::translate(model_space, transformation_component.position);
+        // position_component.rotationy += update.delta;
+        // model_space = glm::rotate(model_space,  position_component.rotationy, glm::vec3(0.0f, 1.0f, 0.0));
         view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 
         unsigned int model_location = glGetUniformLocation(shader->ID, "model");
@@ -224,6 +217,10 @@ void Renderer::update(Update update) {
     // check and call events and swap buffers
     glfwSwapBuffers(window);
 
+}
+
+void Renderer::set_camera_position(glm::vec3 position) {
+    camera_position = position;
 }
 
 bool Renderer::close_window() {

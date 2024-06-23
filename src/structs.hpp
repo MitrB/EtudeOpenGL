@@ -10,11 +10,23 @@
 #include <string>
 
 
-struct PhysicsBody {
-    glm::vec3 position;
-    glm::vec3 velocity;
+struct Transformation {
+    glm::vec3 position{0.0f};
+    float rotationx{0};
+    float rotationy{0};
+    float rotationz{0};
+    float scale{1};
 };
 
+struct PhysicsBody {
+    glm::vec3 velocity{0.0f};
+    float mass{1.0f};
+};
+
+struct CollisionShapeCube {
+    float length{1};
+    glm::vec3 offset{0.0f};
+};
 
 struct Vertex {
     glm::vec3 position{};
